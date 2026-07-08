@@ -358,7 +358,13 @@ async function seedData() {
     }
   ];
 
-  await Report.insertMany(reportsData);
+  const reportsWithDates = reportsData.map((report) => ({
+    ...report,
+    createdAt: report.submittedAt || report.endDate,
+    updatedAt: report.submittedAt || report.endDate,
+  }));
+
+  await Report.insertMany(reportsWithDates);
   console.log(`Successfully seeded ${reportsData.length} weekly reports.`);
 
   console.log('Database seeding process completed successfully!');
