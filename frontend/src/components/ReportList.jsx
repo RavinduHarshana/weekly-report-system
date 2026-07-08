@@ -8,7 +8,7 @@ export default function ReportList({ reports, onEdit, onSubmit }) {
         </div>
       </div>
 
-      <div className="stack-list">
+      <div className="stack-list ">
         {reports.length === 0 ? <div className="empty-state">No reports yet.</div> : null}
         {reports.map((report) => (
           <article key={report._id} className="list-card">

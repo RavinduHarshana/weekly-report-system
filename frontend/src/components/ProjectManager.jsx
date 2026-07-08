@@ -54,26 +54,53 @@ export default function ProjectManager({
         </div>
       </div>
 
-      <form className="compact-form" onSubmit={handleSubmit}>
-        <input
-          value={form.name}
-          onChange={(event) =>
-            setForm((current) => ({ ...current, name: event.target.value }))
-          }
-          placeholder="Project name"
-          required
-        />
+      <form className="project-form-layout" onSubmit={handleSubmit}>
+        <div className="project-form-left">
+          <label>
+            <span className="eyebrow" style={{ fontSize: '0.74rem' }}>Project Name</span>
+            <input
+              value={form.name}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, name: event.target.value }))
+              }
+              placeholder="Enter project name..."
+              required
+            />
+          </label>
 
-        <input
-          value={form.description}
-          onChange={(event) =>
-            setForm((current) => ({
-              ...current,
-              description: event.target.value,
-            }))
-          }
-          placeholder="Description"
-        />
+          <label>
+            <span className="eyebrow" style={{ fontSize: '0.74rem' }}>Description</span>
+            <textarea
+              value={form.description}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  description: event.target.value,
+                }))
+              }
+              placeholder="Enter project description..."
+              rows={5}
+            />
+          </label>
+
+          <div className="form-actions">
+            {editingId && (
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => {
+                  setEditingId(null);
+                  setForm(emptyProject);
+                }}
+              >
+                Cancel edit
+              </button>
+            )}
+            <button className="primary-button" type="submit">
+              {editingId ? "Update project" : "Add project"}
+            </button>
+          </div>
+        </div>
 
         <div className="member-picker">
           <div className="member-picker-header">
@@ -127,24 +154,6 @@ export default function ProjectManager({
               })
             )}
           </div>
-        </div>
-
-        <div className="form-actions">
-          {editingId && (
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => {
-                setEditingId(null);
-                setForm(emptyProject);
-              }}
-            >
-              Cancel edit
-            </button>
-          )}
-          <button className="primary-button" type="submit">
-            {editingId ? "Update project" : "Add project"}
-          </button>
         </div>
       </form>
 
