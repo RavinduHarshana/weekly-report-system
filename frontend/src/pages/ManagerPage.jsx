@@ -119,20 +119,6 @@ export default function ManagerPage({ user, summary, reports, projects, teamMemb
                   </ResponsiveContainer>
                 </div>
                 <div className="chart-card">
-                  <h3>Submission status by member</h3>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <PieChart>
-                      <Pie data={completionChartData} dataKey="submitted" nameKey="name" outerRadius={90} innerRadius={55} paddingAngle={3} label>
-                        {completionChartData.map((entry, index) => (
-                          <Cell key={entry.name} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#fff' }} />
-                      <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="chart-card">
                   <h3>Workload by project</h3>
                   <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={projectWorkloadData}>
@@ -150,31 +136,132 @@ export default function ManagerPage({ user, summary, reports, projects, teamMemb
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="chart-card">
-                  <h3>Recent activity</h3>
-                  <div className="recent-activity-list">
-                    {(summary?.recentReports || []).length === 0 ? (
-                      <p className="empty-state">No recent activity found.</p>
-                    ) : (
-                      (summary?.recentReports || []).slice(0, 4).map((report) => (
-                        <div key={report._id} className="activity-item">
-                          <div className="activity-user">
-                            <span className="member-avatar small">{getInitials(report.userId?.name)}</span>
-                            <div className="activity-user-text">
-                              <strong>{report.userId?.name}</strong>
-                              <p>{report.weekDateRange}</p>
-                            </div>
-                          </div>
-                          <span className={`status-pill status-${report.status}`} style={{ transform: 'scale(0.85)', transformOrigin: 'right center' }}>
-                            {report.status}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
               </div>
             </section>
+
+            <div className="two-column-layout">
+              <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="panel-header" style={{ marginBottom: 0 }}>
+                  <div>
+                    <p className="eyebrow">Submission status</p>
+                    <h2>Team Member Board</h2>
+                  </div>
+                  <div className="chart-donut-mini" style={{ width: '80px', height: '80px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={completionChartData} dataKey="submitted" nameKey="name" outerRadius={38} innerRadius={26} paddingAngle={2}>
+                          {completionChartData.map((entry, index) => (
+                            <Cell key={entry.name} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="submission-table-container" style={{ overflowX: 'auto' }}>
+                  <table className="submission-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--panel-border)', color: 'var(--muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <th style={{ padding: '12px 8px' }}>Member</th>
+                        <th style={{ padding: '12px 8px' }}>Status</th>
+                        <th style={{ padding: '12px 8px' }}>Latest Submission</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(summary?.statusByMember || []).map((member) => (
+                        <tr key={member.memberId} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                          <td style={{ padding: '12px 8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <span className="member-avatar small" style={{ width: '28px', height: '28px', fontSize: '0.75rem' }}>{getInitials(member.name)}</span>
+                              <div>
+                                <strong style={{ fontSize: '0.9rem', color: '#fff' }}>{member.name}</strong>
+                                <br />
+                                <small style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>{member.email}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 8px' }}>
+                            <span className={`status-pill status-${member.status}`} style={{ fontSize: '0.74rem', padding: '4px 10px', display: 'inline-block' }}>
+                              {member.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 8px', fontSize: '0.82rem', color: 'var(--text)' }}>
+                            {member.latestWeek || 'None'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="panel-header" style={{ marginBottom: 0 }}>
+                  <div>
+                    <p className="eyebrow">Active alerts</p>
+                    <h2>Blockers & Activity</h2>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gap: '16px' }}>
+                  <div className="blocker-alerts-panel" style={{ display: 'grid', gap: '10px' }}>
+                    <h3 style={{ fontSize: '0.9rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                      </svg>
+                      Active Blocker Notes
+                    </h3>
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      {(summary?.recentReports || []).filter(r => r.blockers && r.blockers.toLowerCase() !== 'none' && r.blockers.trim() !== '').length === 0 ? (
+                        <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: 0, padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.06)' }}>
+                          No active blockers reported this week!
+                        </p>
+                      ) : (
+                        (summary?.recentReports || [])
+                          .filter(r => r.blockers && r.blockers.toLowerCase() !== 'none' && r.blockers.trim() !== '')
+                          .slice(0, 2)
+                          .map((report) => (
+                            <div key={report._id} style={{ background: 'rgba(231, 111, 81, 0.08)', border: '1px solid rgba(231, 111, 81, 0.2)', borderRadius: '12px', padding: '10px 14px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.8rem' }}>
+                                <strong style={{ color: '#ffcabf' }}>{report.userId?.name}</strong>
+                                <span style={{ color: 'var(--muted)' }}>{report.projectId?.name}</span>
+                              </div>
+                              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.4 }}>
+                                "{report.blockers}"
+                              </p>
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="recent-activity-panel" style={{ display: 'grid', gap: '10px', borderTop: '1px solid var(--panel-border)', paddingTop: '16px' }}>
+                    <h3 style={{ fontSize: '0.9rem', color: 'var(--accent)' }}>Recent Submissions</h3>
+                    <div className="recent-activity-list" style={{ marginTop: 0 }}>
+                      {(summary?.recentReports || []).length === 0 ? (
+                        <p className="empty-state">No recent activity found.</p>
+                      ) : (
+                        (summary?.recentReports || []).slice(0, 3).map((report) => (
+                          <div key={report._id} className="activity-item" style={{ padding: '10px 12px' }}>
+                            <div className="activity-user">
+                              <span className="member-avatar small" style={{ width: '26px', height: '26px', fontSize: '0.7rem' }}>{getInitials(report.userId?.name)}</span>
+                              <div className="activity-user-text">
+                                <strong style={{ fontSize: '0.85rem' }}>{report.userId?.name}</strong>
+                                <p style={{ fontSize: '0.72rem' }}>{report.weekDateRange}</p>
+                              </div>
+                            </div>
+                            <span className={`status-pill status-${report.status}`} style={{ transform: 'scale(0.8)', transformOrigin: 'right center' }}>
+                              {report.status}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
           </>
         )}
 

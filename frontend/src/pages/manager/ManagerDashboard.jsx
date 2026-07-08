@@ -31,7 +31,7 @@ export default function ManagerDashboard() {
       const [projectData, reportData, summaryData, memberData] = await Promise.all([
         api.getProjects(),
         api.getReports(query),
-        api.getDashboardSummary(query),
+        api.getDashboardSummary(''),
         api.getTeamMembers(),
       ]);
 
