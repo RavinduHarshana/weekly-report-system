@@ -29,9 +29,8 @@ const buildBaseReportQuery = (req) => {
   if (req.query.weekDateRange) query.weekDateRange = new RegExp(req.query.weekDateRange, 'i');
 
   if (req.query.startDate || req.query.endDate) {
-    query.createdAt = {};
-    if (req.query.startDate) query.createdAt.$gte = new Date(req.query.startDate);
-    if (req.query.endDate) query.createdAt.$lte = new Date(req.query.endDate);
+    if (req.query.startDate) query.startDate = { $gte: new Date(req.query.startDate) };
+    if (req.query.endDate) query.endDate = { $lte: new Date(req.query.endDate) };
   }
 
   return query;
@@ -158,10 +157,22 @@ exports.getReportById = async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
-// 4. View All Reports with Filters (Manager Dashboard)[cite: 1]
+// 4. View All Reports with Filters (Manager Dashboard)
 exports.getAllReports = async (req, res) => {
   try {
+    const teamMembers = await User.find({ role: 'Team Member' }).select('_id');
+    const teamMemberIds = teamMembers.map((member) => member._id);
+
     const query = buildBaseReportQuery(req);
+    if (query.userId) {
+      const isTeamMember = teamMemberIds.some((id) => id.toString() === query.userId.toString());
+      if (!isTeamMember) {
+        return res.status(200).json([]);
+      }
+    } else {
+      query.userId = { $in: teamMemberIds };
+    }
+
     const reports = await populateReport(Report.find(query).sort({ createdAt: -1 }));
     res.status(200).json(reports);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -171,8 +182,39 @@ exports.getAllReports = async (req, res) => {
 exports.getDashboardSummary = async (req, res) => {
   try {
     const teamMembers = await User.find({ role: 'Team Member' }).select('name email role');
+    const teamMemberIds = teamMembers.map((member) => member._id);
+
+    const baseQuery = buildBaseReportQuery(req);
+    if (baseQuery.userId) {
+      const isTeamMember = teamMemberIds.some((id) => id.toString() === baseQuery.userId.toString());
+      if (!isTeamMember) {
+        return res.status(200).json({
+          metrics: {
+            totalTeamMembers: teamMembers.length,
+            totalReportsSubmittedThisWeek: 0,
+            submissionRate: 0,
+            openBlockers: 0,
+            pendingMembers: teamMembers.length,
+          },
+          statusByMember: teamMembers.map((m) => ({
+            memberId: m._id,
+            name: m.name,
+            email: m.email,
+            submitted: false,
+            status: 'pending',
+            latestWeek: null,
+          })),
+          projectWorkload: [],
+          tasksCompletedTrend: [],
+          recentReports: [],
+        });
+      }
+    } else {
+      baseQuery.userId = { $in: teamMemberIds };
+    }
+
     const reports = await populateReport(
-      Report.find(buildBaseReportQuery(req)).sort({ createdAt: -1 }),
+      Report.find(baseQuery).sort({ createdAt: -1 }),
     );
 
     const thisWeekStart = new Date();
@@ -189,7 +231,6 @@ exports.getDashboardSummary = async (req, res) => {
       return report.status === 'submitted' && submittedDate >= thisWeekStart;
     }).length;
 
-    const teamMemberIds = new Set(teamMembers.map((member) => member._id.toString()));
     const submittedMemberIds = new Set(
       summaryReports
         .filter((report) => report.status === 'submitted')
@@ -227,8 +268,14 @@ exports.getDashboardSummary = async (req, res) => {
       };
       projectItem.reportCount += 1;
       projectWorkloadMap.set(projectKey, projectItem);
+    });
 
-      const reportDateKey = new Date(report.createdAt).toISOString().slice(0, 10);
+    const chronologicalReports = [...summaryReports].sort(
+      (a, b) => new Date(a.endDate) - new Date(b.endDate)
+    );
+
+    chronologicalReports.forEach((report) => {
+      const reportDateKey = formatDateLabel(report.endDate);
       const completedItemCount = countItems(report.tasksCompleted);
       completedTrendMap.set(reportDateKey, (completedTrendMap.get(reportDateKey) || 0) + completedItemCount);
     });
@@ -246,7 +293,7 @@ exports.getDashboardSummary = async (req, res) => {
       statusByMember,
       projectWorkload: Array.from(projectWorkloadMap.values()),
       tasksCompletedTrend: Array.from(completedTrendMap.entries()).map(([date, completedItems]) => ({ date, completedItems })),
-      recentReports: summaryReports.slice(0, 10),
+      recentReports: reports.slice(0, 10),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
