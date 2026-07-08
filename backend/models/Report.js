@@ -4,7 +4,7 @@ const ReportSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
-  weekDateRange: { type: String, required: true }, // Udaharana: "2026 July 01 - July 07"
+  weekDateRange: { type: String, required: true }, 
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
   tasksCompleted: { type: String, required: true },
   tasksPlanned: { type: String, required: true },
