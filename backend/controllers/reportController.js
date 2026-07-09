@@ -300,7 +300,7 @@ exports.getDashboardSummary = async (req, res) => {
   }
 };
 
-// 6. AI Chatbot (Manager Portal querying Gemini)
+// 6. AI Chatbot 
 exports.askChatbot = async (req, res) => {
   try {
     const { message } = req.body;
@@ -327,7 +327,7 @@ exports.askChatbot = async (req, res) => {
     ]);
 
     // Build context payload
-    let contextStr = "You are Sisenco Weekly Status AI Assistant, a helpful helper for managers. You answer questions about team status, weekly reports, blockers, hours worked, and projects using the following official data context:\n\n";
+    let contextStr = "You are Assistant, a helpful helper for managers. You answer questions about team status, weekly reports, blockers, hours worked, and projects using the following official data context:\n\n";
 
     contextStr += "=== TEAM MEMBERS ===\n";
     teamMembers.forEach((member) => {

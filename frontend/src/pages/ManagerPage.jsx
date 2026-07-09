@@ -31,7 +31,7 @@ export default function ManagerPage({ user, summary, reports, projects, teamMemb
   const [chatMessages, setChatMessages] = useState([
     {
       role: 'bot',
-      text: `Hello, ${user?.name || 'Manager'}. I am your Sisenco Weekly Status AI Assistant. I have analyzed all projects, team members, and weekly reports. How can I help you today?`
+      text: `Hello, ${user?.name || 'Manager'}. I am your AI Assistant. I have analyzed all projects, team members, and weekly reports. How can I help you today?`
     }
   ]);
   const [chatInput, setChatInput] = useState('');
