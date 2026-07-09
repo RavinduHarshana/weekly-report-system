@@ -4,18 +4,25 @@ Full-stack role-based weekly reporting app for team members and managers.
 
 ## Stack
 
-- Backend: Node.js, Express, MongoDB, Mongoose, JWT
-- Frontend: React, Vite, React Router, Recharts
+- **Backend**: Node.js, Express, MongoDB, Mongoose, JWT, Google Gemini API
+- **Frontend**: React, Vite, React Router, Recharts, React Datepicker
+
+---
 
 ## Features Implemented
 
-- Public register and login
-- Team Member and Manager roles
-- JWT-based protected routes
-- Personal weekly report creation, editing, submission, and history
-- Manager report dashboard with filters and summary metrics
-- Project/category CRUD
-- Role-based access control on protected endpoints
+- **Tabbed Side Navigation Shell**: High-end sidebar with tabbed section navigation. Restructured layouts so that users view individual panel contents sequentially, eliminating vertical scroll clutter.
+- **Persistent AI Chatbot Assistant**: A floating chat widget ball (`🤖` toggler) fixed at the bottom-right corner of any page. Opens a sliding glassmorphic pop-up window where managers can query Google Gemini (`gemini-2.5-flash`) about active team members, blockers, project workloads, or report summaries.
+- **Dynamic Analytics & Charts**:
+  - Re-designed completed task trends showing chronological weekly progressions.
+  - Workload by project rendering custom linear gradients and rounded corners.
+  - Submission rate donut metrics and sleek dark tooltip designs.
+  - Recent activity feeds styled with compact initial avatars.
+- **Decoupled Search Queries**: Filters applied inside the *Report Queries* search page only narrow down the search results table, leaving the main dashboard metrics stable and correct.
+- **Realistic Sri Lankan Seed Data**: Dynamic seeder script populating database records under localized projects (LankaQR, Dialog SMS, Seylan IPG, Koombiyo Tracker) and software engineering profiles (Kasun, Nimal, Ruwan, Dilini) across a 5-week history.
+- **Full Breakpoint Responsiveness**: Optimized top-level shells and components to adjust across desktop, tablet, and mobile views.
+
+---
 
 ## Setup
 
@@ -37,62 +44,58 @@ Create a `.env` file inside `backend/`:
 PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
+
+# First manager account seeding credentials
+MANAGER_NAME="Admin Manager"
+MANAGER_EMAIL=admin@example.com
+MANAGER_PASSWORD=Password123!
+
+# Google Gemini API key to enable AI Status Assistant chatbot
+GEMINI_API_KEY=your_google_gemini_api_key_here
 ```
 
-### 3. Run the backend
+### 3. Database Seeding
+
+To clear the collections (users, projects, reports) and populate the system with a complete set of localized Sri Lankan dummy team data:
+
+```bash
+cd backend
+npm run seed
+```
+
+*Note: If you only want to seed the basic Manager account without the mock team reports, run `npm run seed:manager` instead.*
+
+### 4. Run the backend
 
 ```bash
 cd backend
 npm run dev
 ```
 
-### 4. Run the frontend
+### 5. Run the frontend
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-### 5. Create the first manager account
+Log in with `admin@example.com` / `Password123!` to view the Manager Dashboard.
 
-Add these variables to `backend/.env`:
-
-```env
-MANAGER_NAME=Admin Name
-MANAGER_EMAIL=admin@example.com
-MANAGER_PASSWORD=StrongPassword123
-```
-
-Then run:
-
-```bash
-cd backend
-npm run seed:manager
-```
-
-After that, log in with the manager email and password.
-
-## Important Notes
-
-- Public registration creates a `Team Member` account.
-- Manager accounts should be created by an authenticated Manager through `POST /api/auth/register-admin`.
-- The backend exposes `/api/reports` and `/api/projects` for the dashboard and reporting flows.
-- The first Manager can be seeded with `npm run seed:manager` using env credentials.
-- The frontend is route-based: `/login`, `/register`, `/member`, and `/manager` are separated into dedicated page files.
-- The frontend bootstraps the current user from `GET /api/auth/me` so the active role comes from the backend session, not from cached client role data.
+---
 
 ## API Overview
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/register-admin`
-- `GET /api/reports/mine`
-- `POST /api/reports/create`
-- `PUT /api/reports/:id`
-- `POST /api/reports/:id/submit`
-- `GET /api/reports/all`
-- `GET /api/reports/summary/dashboard`
-- `GET /api/projects`
-- `POST /api/projects`
-- `PUT /api/projects/:id`
-- `DELETE /api/projects/:id`
+- `POST /api/auth/register` - Register a Team Member
+- `POST /api/auth/login` - Authenticate users
+- `POST /api/auth/register-admin` - Create a Manager (Manager authentication required)
+- `GET /api/reports/mine` - Retrieve own reports (Team Member)
+- `POST /api/reports/create` - Create draft report
+- `PUT /api/reports/:id` - Update report details
+- `POST /api/reports/:id/submit` - Mark report status as submitted
+- `GET /api/reports/all` - Filter and retrieve all team reports (Manager only)
+- `GET /api/reports/summary/dashboard` - Global weekly overview summary data (Manager only)
+- `POST /api/reports/chat` - AI status assistant chatbot endpoint (Manager only)
+- `GET /api/projects` - View all active projects
+- `POST /api/projects` - Add new project
+- `PUT /api/projects/:id` - Edit project details
+- `DELETE /api/projects/:id` - Delete project
