@@ -25,4 +25,7 @@ router.put('/:id', protect, updateReportValidation, reportController.editReport)
 // Submit report
 router.post('/:id/submit', protect, reportController.submitReport);
 
+// AI Chatbot query endpoint
+router.post('/chat', protect, authorize('Manager'), reportController.askChatbot);
+
 module.exports = router;
