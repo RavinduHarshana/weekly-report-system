@@ -5,6 +5,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import MetricCard from '../components/MetricCard';
 import ProjectManager from '../components/ProjectManager';
 import DashboardSidebar from '../components/DashboardSidebar';
+import { api } from '../services/api';
 
 const STATUS_COLORS = ['#e4572e', '#2a9d8f', '#f4a261'];
 
@@ -26,17 +27,86 @@ export default function ManagerPage({ user, summary, reports, projects, teamMemb
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentHash, setCurrentHash] = useState(window.location.hash || '#overview');
 
+  const [isChatWidgetOpen, setIsChatWidgetOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    {
+      role: 'bot',
+      text: `Hello, ${user?.name || 'Manager'}. I am your Sisenco Weekly Status AI Assistant. I have analyzed all projects, team members, and weekly reports. How can I help you today?`
+    }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState('');
+
+  useEffect(() => {
+    if (isChatWidgetOpen) {
+      const box = document.getElementById('chat-log-box');
+      if (box) {
+        // Delay scroll slightly to allow DOM updates
+        setTimeout(() => {
+          box.scrollTop = box.scrollHeight;
+        }, 50);
+      }
+    }
+  }, [chatMessages, chatLoading, isChatWidgetOpen]);
+
+  const handleSendMessage = async (e) => {
+    if (e) e.preventDefault();
+    const query = chatInput.trim();
+    if (!query) return;
+
+    setChatMessages((prev) => [...prev, { role: 'user', text: query }]);
+    setChatInput('');
+    setChatLoading(true);
+    setChatError('');
+
+    try {
+      const res = await api.askChatbot(query);
+      setChatMessages((prev) => [...prev, { role: 'bot', text: res.response }]);
+    } catch (err) {
+      setChatError(err.message || 'Failed to communicate with AI Assistant.');
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleSendSuggestion = async (text) => {
+    setChatMessages((prev) => [...prev, { role: 'user', text }]);
+    setChatLoading(true);
+    setChatError('');
+
+    try {
+      const res = await api.askChatbot(text);
+      setChatMessages((prev) => [...prev, { role: 'bot', text: res.response }]);
+    } catch (err) {
+      setChatError(err.message || 'Failed to communicate with AI Assistant.');
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const formatBotText = (text) => {
+    if (!text) return '';
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
   useEffect(() => {
     const handleHashChange = () => {
       setCurrentHash(window.location.hash || '#overview');
     };
     window.addEventListener('hashchange', handleHashChange);
-    
+
     // Set default hash if none exists
     if (!window.location.hash) {
       window.location.hash = '#overview';
     }
-    
+
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
@@ -344,6 +414,102 @@ export default function ManagerPage({ user, summary, reports, projects, teamMemb
           <ProjectManager projects={projects} teamMembers={teamMembers || []} onCreate={onCreateProject} onUpdate={onUpdateProject} onDelete={onDeleteProject} />
         )}
       </main>
+
+      {/* Floating Chatbot Assistant Widget */}
+      <button
+        className="chatbot-floating-button"
+        onClick={() => setIsChatWidgetOpen(!isChatWidgetOpen)}
+        title="AI Status Assistant"
+        aria-label="Toggle AI Status Assistant"
+      >
+        {isChatWidgetOpen ? '✕' : '🤖'}
+      </button>
+
+      {isChatWidgetOpen && (
+        <div className="chatbot-popup-window">
+          <div className="chatbot-popup-header">
+            <div>
+              <h3>🤖 Status Assistant</h3>
+              <p>Ask about reports, status, and blockers</p>
+            </div>
+            <button className="chatbot-popup-close" onClick={() => setIsChatWidgetOpen(false)}>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" style={{ width: '16px', height: '16px' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="chatbot-popup-container">
+            {/* Suggestion Pills */}
+            <div className="chatbot-popup-suggestions">
+              <button className="suggestion-pill" onClick={() => handleSendSuggestion("Who has blockers this week?")} disabled={chatLoading}>
+                Blockers?
+              </button>
+              <button className="suggestion-pill" onClick={() => handleSendSuggestion("Summarize recent activities of team members")} disabled={chatLoading}>
+                Activities
+              </button>
+              <button className="suggestion-pill" onClick={() => handleSendSuggestion("Which project has the highest workload?")} disabled={chatLoading}>
+                Workloads
+              </button>
+            </div>
+
+            {/* Chat log */}
+            <div className="chat-log" id="chat-log-box" style={{ padding: '12px' }}>
+              {chatMessages.map((msg, index) => (
+                <div key={index} className={`chat-message ${msg.role}`} style={{ maxWidth: '90%' }}>
+                  <div className="chat-avatar" style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}>
+                    {msg.role === 'bot' ? '🤖' : getInitials(user?.name) || 'M'}
+                  </div>
+                  <div className="chat-content">
+                    <div className="chat-bubble" style={{ padding: '10px 14px', fontSize: '0.84rem' }}>
+                      <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.45' }}>
+                        {formatBotText(msg.text)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {chatLoading && (
+                <div className="chat-message bot loading" style={{ maxWidth: '90%' }}>
+                  <div className="chat-avatar" style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}>🤖</div>
+                  <div className="chat-content">
+                    <div className="chat-bubble typing-indicator" style={{ padding: '10px 14px' }}>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {chatError && (
+                <div className="chatbot-error-message" style={{ padding: '10px 12px', fontSize: '0.8rem' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ width: '14px', height: '14px' }}>
+                    <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
+                  </svg>
+                  {chatError}
+                </div>
+              )}
+            </div>
+
+            {/* Chat Input Form */}
+            <form onSubmit={handleSendMessage} className="chat-input-form">
+              <input
+                type="text"
+                placeholder="Ask weekly status..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                disabled={chatLoading}
+                style={{ padding: '10px 14px', fontSize: '0.86rem' }}
+              />
+              <button type="submit" className="primary-button" disabled={chatLoading || !chatInput.trim()} style={{ padding: '10px 16px', fontSize: '0.86rem' }}>
+                {chatLoading ? '...' : 'Send'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

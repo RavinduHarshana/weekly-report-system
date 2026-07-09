@@ -38,6 +38,7 @@ export const api = {
   createProject: (payload) => request('/projects', { method: 'POST', body: JSON.stringify(payload) }),
   updateProject: (id, payload) => request(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteProject: (id) => request(`/projects/${id}`, { method: 'DELETE' }),
+  askChatbot: (message) => request('/reports/chat', { method: 'POST', body: JSON.stringify({ message }) }),
 };
 
 export { request };

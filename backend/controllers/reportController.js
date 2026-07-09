@@ -299,3 +299,99 @@ exports.getDashboardSummary = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// 6. AI Chatbot (Manager Portal querying Gemini)
+exports.askChatbot = async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: 'Message query is required' });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(400).json({
+        error: 'Gemini API key is not configured. Please add GEMINI_API_KEY=your_key in backend/.env to enable the chatbot.'
+      });
+    }
+
+    // Fetch team contexts
+    const Project = require('../models/Project');
+    const [teamMembers, projects, reports] = await Promise.all([
+      User.find({ role: 'Team Member' }).select('name email role'),
+      Project.find({}).populate('assignedMembers', 'name email'),
+      Report.find({})
+        .populate('userId', 'name email')
+        .populate('projectId', 'name')
+        .sort({ startDate: -1 })
+    ]);
+
+    // Build context payload
+    let contextStr = "You are Sisenco Weekly Status AI Assistant, a helpful helper for managers. You answer questions about team status, weekly reports, blockers, hours worked, and projects using the following official data context:\n\n";
+
+    contextStr += "=== TEAM MEMBERS ===\n";
+    teamMembers.forEach((member) => {
+      contextStr += `- Name: ${member.name}, Email: ${member.email}\n`;
+    });
+
+    contextStr += "\n=== PROJECTS ===\n";
+    projects.forEach((proj) => {
+      const members = (proj.assignedMembers || []).map(m => m.name).join(', ');
+      contextStr += `- Project: ${proj.name}\n  Description: ${proj.description}\n  Assigned Members: ${members || 'None'}\n`;
+    });
+
+    contextStr += "\n=== WEEKLY REPORTS (Sorted with newest first) ===\n";
+    reports.forEach((report) => {
+      const author = report.userId?.name || 'Unknown User';
+      const project = report.projectId?.name || 'Unassigned';
+      contextStr += `- Report ID: ${report._id}\n`;
+      contextStr += `  Author: ${author}\n`;
+      contextStr += `  Project: ${project}\n`;
+      contextStr += `  Week Date Range: ${report.weekDateRange}\n`;
+      contextStr += `  Hours Worked: ${report.hoursWorked}\n`;
+      contextStr += `  Status: ${report.status}\n`;
+      contextStr += `  Tasks Completed: ${report.tasksCompleted}\n`;
+      contextStr += `  Tasks Planned: ${report.tasksPlanned}\n`;
+      contextStr += `  Blockers: ${report.blockers || 'None'}\n`;
+      contextStr += `  Notes: ${report.notes || 'None'}\n\n`;
+    });
+
+    contextStr += "Instructions for you:\n";
+    contextStr += "1. Answer the manager's query strictly using the provided context. If the query cannot be answered using the context, state that clearly but try to be as helpful as possible.\n";
+    contextStr += "2. Be concise, professional, and clear.\n";
+    contextStr += "3. Support markdown in your formatting.\n";
+    contextStr += "4. Do not mention system details (like prompt context injection details) unless specifically asked. Keep answers natural.\n";
+
+    // Call Gemini API using Node native fetch
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: `${contextStr}\n\nManager's Query: ${message}` }
+              ]
+            }
+          ]
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'Failed to generate response from Gemini API');
+    }
+
+    const botText = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't formulate a response.";
+    res.status(200).json({ response: botText });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
